@@ -2,11 +2,144 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Welcom to my App!</title>
+    <title>Activities in Ireland Database</title>
     <link rel="stylesheet" href="index.css">
   </head>
   <body>
-    <h1>💖 Welcome to my App!</h1>
-    <p>Greetings!</p>
+    <h1>Activities in Ireland Database</h1>
+    <p>
+      <button onclick="query1()">Accommodations with multiple activities nearby</button>
+      <button onclick="query2()">Query 2</button>
+      <button onclick="query3()">Which attractions/activities are furthest west?</button>
+      <button onclick="query4()">Query 4</button>
+      <button onclick="query5()">Query 5</button>
+    </p>
+    <p>
+      <button onclick="query6()">Query 6</button>
+      <button onclick="query7()">Query 7</button>
+      <button onclick="query8()">Query 8</button>
+      <button onclick="query9()">Query 9</button>
+      <button onclick="query10()">Query 10</button>
+    </p>
+    <h2>Input</h2>
+    <div id="input" style="height:24px">
+    </div>
+    <div>
+      <button onclick="runQuery()">Run Query</button>
+    </div>
+    <h2>Output</h2>
+    <div id="output" style="height:200px;width:600px;border:1px solid #ccc;font:12px/18px Georgia, Garamond, Serif;overflow:auto;">
+    </div>
+
+    </textarea>
   </body>
+  <script>
+    var output = document.getElementById("output");
+    var input = document.getElementById("input");
+    var queryToRun = 1;
+    function query1() {
+      queryToRun = 1
+      input.innerHTML = "<div style=\"float:left\">Distance from Accommodation: </div><input id=\"param1\"></input>"
+    };
+
+    function query2() {
+      queryToRun = 2
+      input.innerHTML = ""
+    };
+
+    function query3() {
+      queryToRun = 3;
+      input.innerHTML = "<div style=\"float:left\">Number of Results: </div><input id=\"param1\"></input>"
+    };
+    
+    function query4() {
+      queryToRun = 4;
+      input.innerHTML = "<div style=\"float:left\">Please enter a distance: </div><input id=\"param1\"></input>"
+    }
+
+    function runQuery() {
+      if (queryToRun == 1) q1();
+      else if (queryToRun == 2) q2();
+      else if (queryToRun == 3) q3();
+      else if (queryToRun == 4) q4();
+    }
+
+    function q1() {
+      var param1 = document.getElementById("param1").value;
+      var dist = param1 / 110;
+      query = `PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+select ?accom where {
+    {
+        select ?accom (COUNT(?act) AS ?count) where { 
+            ?a rdf:type tmie:AddressLocality;
+            tmie:hasAccommodations ?accom.
+            ?accom wgs:long ?accomlong;
+               wgs:lat ?accomlat;
+            {
+                select ?act ?actlong ?actlat where {
+                    ?s rdf:type tmie:AddressLocality;
+                    tmie:has ?act.
+                    ?x wgs:long ?actlong;
+                       wgs:lat ?actlat;
+                    FILTER (EXISTS {?act rdf:type dbpedia:Activity} || EXISTS {?act rdf:type tmie:Attraction})
+                } limit 200
+            }
+            BIND (xsd:float(?accomlat) - xsd:float(?actlat) AS ?lat)
+            BIND (xsd:float(?accomlong) - xsd:float(?actlong) AS ?long)` +
+            "FILTER(?lat > " + (-dist) + " && ?lat < " + dist + " && ?long > " + (-dist) + " && ?long < " + dist + ") } GROUP BY ?accom limit 200 } FILTER(?count > 1) } limit 100"
+      console.log(query)
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      output.innerHTML = xmlHttp.responseText.slice(6);
+    }
+    function q2() {
+      query = "PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#> select ?o where {?s tmie:localityFoundIn ?o .} group by ?o"
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      output.innerHTML = xmlHttp.responseText;
+    }
+    function q3() {
+      var param1 = document.getElementById("param1").value;
+      query = "PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#> PREFIX dbpedia: <http://dbpedia.org/ontology/> PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> select ?x where { ?s rdf:type tmie:AddressLocality; tmie:has ?x. ?x wgs:long ?o. FILTER (EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction}) } order by asc(?o) limit " + param1
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      output.innerHTML = xmlHttp.responseText.slice(2);
+    }
+    function q4() {
+      query = "PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> select ?s where {?s wgs:long ?o .} order by ?o limit 1"
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(2);
+    }
+  </script>
 </html>
