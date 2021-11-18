@@ -9,17 +9,15 @@
     <h1>Activities in Ireland Database</h1>
     <p>
       <button onclick="query1()">Accommodations with multiple activities nearby</button>
-      <button onclick="query2()">Query 2</button>
+      <button onclick="query2()">Accommodations near vegetarian friendly dining</button>
       <button onclick="query3()">Which attractions/activities are furthest west?</button>
-      <button onclick="query4()">Query 4</button>
-      <button onclick="query5()">Query 5</button>
-    </p>
-    <p>
-      <button onclick="query6()">Query 6</button>
-      <button onclick="query7()">Query 7</button>
-      <button onclick="query8()">Query 8</button>
-      <button onclick="query9()">Query 9</button>
-      <button onclick="query10()">Query 10</button>
+      <button onclick="query4()">Accommodations in most visited towns</button>
+      <button onclick="query5()">Hotels with spa or golf</button>
+      <button onclick="query6()">Places where you can go surfing</button>
+      <button onclick="query7()">Restaurants near hotels with government schemes</button>
+      <button onclick="query8()">Find attractions/activities about x</button>
+      <button onclick="query9()">Number of activity x in town y</button>
+      <button onclick="query10()">COVID safe activities/accommodation in county x</button>
     </p>
     <h2>Input</h2>
     <div id="input" style="height:24px">
@@ -39,22 +37,47 @@
     var queryToRun = 1;
     function query1() {
       queryToRun = 1
-      input.innerHTML = "<div style=\"float:left\">Distance from Accommodation: </div><input id=\"param1\"></input>"
+      input.innerHTML = "<div style=\"float:left\">Distance from accommodation (Km): </div><input id=\"param1\"></input>"
     };
 
     function query2() {
       queryToRun = 2
-      input.innerHTML = ""
+      input.innerHTML = "<div style=\"float:left\">Distance between locations (Km): </div><input id=\"param1\"></input>"
     };
 
     function query3() {
       queryToRun = 3;
-      input.innerHTML = "<div style=\"float:left\">Number of Results: </div><input id=\"param1\"></input>"
+      input.innerHTML = "<div style=\"float:left\">Number of results: </div><input id=\"param1\"></input>"
     };
     
     function query4() {
       queryToRun = 4;
-      input.innerHTML = "<div style=\"float:left\">Please enter a distance: </div><input id=\"param1\"></input>"
+      input.innerHTML = "<div style=\"float:left\">Number of towns to count: </div><input id=\"param1\"></input>"
+    }
+    function query5() {
+      queryToRun = 5;
+      input.innerHTML = ""
+    }
+    function query6() {
+      queryToRun = 6;
+      input.innerHTML = ""
+    }
+    function query7() {
+      queryToRun = 7;
+      input.innerHTML = "<div style=\"float:left\">Distance from accommodation (Km): </div><input id=\"param1\"></input>"
+    }
+    function query8() {
+      queryToRun = 8;
+      input.innerHTML = "<div style=\"float:left\">Activity to find: </div><input id=\"param1\" value=\"Food and Drink\"></input>"
+      
+    }
+    function query9() {
+      queryToRun = 9;
+      input.innerHTML = `<div style=\"float:left\">Activity and town to find: </div><input id=\"param1\" value=\"Food and Drink\"></input><input id=\"param2\" value=\"Dublin City\"></input>`
+    }
+    function query10() {
+      queryToRun = 10;
+      input.innerHTML = `<div style=\"float:left\">County to search: </div><input id=\"param1\" value=\"Dublin\"></input>`
     }
 
     function runQuery() {
@@ -62,12 +85,18 @@
       else if (queryToRun == 2) q2();
       else if (queryToRun == 3) q3();
       else if (queryToRun == 4) q4();
+      else if (queryToRun == 5) q5();
+      else if (queryToRun == 6) q6();
+      else if (queryToRun == 7) q7();
+      else if (queryToRun == 8) q8();
+      else if (queryToRun == 9) q9();
+      else if (queryToRun == 10) q10();
     }
 
     function q1() {
       var param1 = document.getElementById("param1").value;
       var dist = param1 / 110;
-      query = `PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#>
+      query = `PREFIX tmie: <http://www.tourismIreland.org/ontology#>
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX city: <http://www.disit.org/km4city/schema#>
 PREFIX dbpedia: <http://dbpedia.org/ontology/>
@@ -84,15 +113,14 @@ select ?accom where {
                 select ?act ?actlong ?actlat where {
                     ?s rdf:type tmie:AddressLocality;
                     tmie:has ?act.
-                    ?x wgs:long ?actlong;
+                    ?act wgs:long ?actlong;
                        wgs:lat ?actlat;
                     FILTER (EXISTS {?act rdf:type dbpedia:Activity} || EXISTS {?act rdf:type tmie:Attraction})
-                } limit 200
+                } limit 100
             }
             BIND (xsd:float(?accomlat) - xsd:float(?actlat) AS ?lat)
             BIND (xsd:float(?accomlong) - xsd:float(?actlong) AS ?long)` +
             "FILTER(?lat > " + (-dist) + " && ?lat < " + dist + " && ?long > " + (-dist) + " && ?long < " + dist + ") } GROUP BY ?accom limit 200 } FILTER(?count > 1) } limit 100"
-      console.log(query)
       url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() { 
@@ -104,7 +132,32 @@ select ?accom where {
       output.innerHTML = xmlHttp.responseText.slice(6);
     }
     function q2() {
-      query = "PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#> select ?o where {?s tmie:localityFoundIn ?o .} group by ?o"
+      var dist = document.getElementById("param1").value / 110;
+      query = `PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+select ?accom ?rest where {
+    {
+        select ?accom ?rest where { 
+            ?a rdf:type tmie:AddressLocality;
+            tmie:hasAccommodations ?accom.
+            ?accom wgs:long ?accomlong;
+               wgs:lat ?accomlat;
+            {
+                select ?rest ?restlong ?restlat where {
+                    ?s rdf:type tmie:AddressLocality;
+                    tmie:has ?rest.
+    				?rest wgs:long ?restlong;
+                       wgs:lat ?restlat;
+    				tmie:provide ?x.
+    				?x rdf:type tmie:VegetarianAndVeganDining.
+                }
+            }
+            BIND (xsd:float(?accomlat) - xsd:float(?restlat) AS ?lat)
+            BIND (xsd:float(?accomlong) - xsd:float(?restlong) AS ?long)` + "FILTER(?lat > " + (-dist) + " && ?lat < " + dist + " && ?long > " + (-dist) + " && ?long < " + dist + ")} limit 200} }"
       url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() { 
@@ -113,11 +166,11 @@ select ?accom where {
       }
       xmlHttp.open("GET", url, false); // true for asynchronous 
       xmlHttp.send(null);
-      output.innerHTML = xmlHttp.responseText;
+      output.innerHTML = xmlHttp.responseText.slice(10);
     }
     function q3() {
       var param1 = document.getElementById("param1").value;
-      query = "PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> PREFIX tmie: <http://www.semanticweb.org/hollybaker/ontologies/2021/10/tourismIreland#> PREFIX dbpedia: <http://dbpedia.org/ontology/> PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> select ?x where { ?s rdf:type tmie:AddressLocality; tmie:has ?x. ?x wgs:long ?o. FILTER (EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction}) } order by asc(?o) limit " + param1
+      query = "PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> PREFIX tmie: <http://www.tourismIreland.org/ontology#> PREFIX dbpedia: <http://dbpedia.org/ontology/> PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> select ?x where { ?s rdf:type tmie:AddressLocality; tmie:has ?x. ?x wgs:long ?o. FILTER (EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction}) } order by asc(?o) limit " + param1
       url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() { 
@@ -129,7 +182,23 @@ select ?accom where {
       output.innerHTML = xmlHttp.responseText.slice(2);
     }
     function q4() {
-      query = "PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> select ?s where {?s wgs:long ?o .} order by ?o limit 1"
+      var param1 = document.getElementById("param1").value;
+      query = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+select ?town ?accom where {
+    {
+        select ?town (COUNT(?act) AS ?count) where { 
+            ?town rdf:type tmie:AddressLocality;
+               tmie:has ?act.
+            FILTER (EXISTS {?act rdf:type dbpedia:Activity} || EXISTS {?act rdf:type tmie:Attraction})
+        } group by ?town
+        order by desc(?count)
+        limit ` + param1 + `
+    }
+    ?town tmie:hasAccommodations ?accom
+}`
       url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
       var xmlHttp = new XMLHttpRequest();
       xmlHttp.onreadystatechange = function() { 
@@ -139,7 +208,161 @@ select ?accom where {
       xmlHttp.open("GET", url, false); // true for asynchronous 
       xmlHttp.send(null);
       console.log(xmlHttp.responseText);
-      output.innerHTML = xmlHttp.responseText.slice(2);
+      output.innerHTML = xmlHttp.responseText.slice(10);
+    }
+    function q5() {
+      query = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+select * where { 
+	?s rdf:type tmie:Amenity;
+    tmie:type ?type.
+    FILTER(?type = "spa" || ?type = "golf")
+}`
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(6);
+    }
+    function q6() {
+      query = `PREFIX city: <http://www.disit.org/km4city/schema#>
+select ?s where { 
+    ?s city:shortDescription ?d.
+    FILTER CONTAINS(?d, "Surfing")
+}`
+    url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(1);
+    }
+    function q7() {
+      var dist = document.getElementById("param1").value / 110;
+      query = `PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX xsd: <http://www.w3.org/2001/XMLSchema#>
+select ?rest where {
+    {
+        select ?accom ?rest where { 
+            ?a rdf:type tmie:AddressLocality;
+            tmie:hasAccommodations ?accom.
+            ?accom wgs:long ?accomlong;
+               wgs:lat ?accomlat;
+            {
+                select ?rest ?restlong ?restlat where {
+                    ?s rdf:type tmie:AddressLocality;
+                    tmie:has ?rest.
+    				?rest wgs:long ?restlong;
+                       wgs:lat ?restlat;
+                       city:shortDescription ?x.
+                    FILTER CONTAINS(?x, "Restaurant")
+                } limit 100
+            }
+            BIND (xsd:float(?accomlat) - xsd:float(?restlat) AS ?lat)
+            BIND (xsd:float(?accomlong) - xsd:float(?restlong) AS ?long)
+            FILTER(?lat > ` + (-dist) + `&& ?lat < ` + dist + ` && ?long > ` + (-dist) + ` && ?long < ` + dist + `)
+        }
+        limit 200
+    }
+    ?accom city:shortDescription ?d.
+    FILTER (CONTAINS(?d, "Hotel") && (CONTAINS(?d, "Welcome Standard") || CONTAINS(?d, "Stay and Spend")))
+}group by ?rest`
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(4);
+    }
+    function q8() {
+      var param1 = document.getElementById("param1").value;
+      query = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+select ?x where { 
+    ?s rdf:type tmie:AddressLocality;
+       tmie:has ?x.
+    ?x city:shortDescription ?d.
+    FILTER ((EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction}) && CONTAINS(?d, \"` + param1 + `\"))
+}`
+url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(1);
+    }
+    function q9() {
+      var param1 = document.getElementById("param1").value;
+      var param2 = encodeURIComponent(document.getElementById("param2").value);
+      query = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX tmieaddress: <http://www.tourismIreland.org/ontology#AddressLocality/>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+select (COUNT(?x) AS ?X) where { 
+    tmieaddress:` + param2 + ` tmie:has ?x.
+    ?x city:shortDescription ?d.
+    FILTER ((EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction}) && CONTAINS(?d, \"` + param1 + `\"))
+} group by ?a
+order by desc(?X)`
+    url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(3);
+    }
+    function q10() {
+      var param1 = document.getElementById("param1").value;
+      query = `PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX tmie: <http://www.tourismIreland.org/ontology#>
+PREFIX tmieaddress: <http://www.tourismIreland.org/ontology#AddressRegion/>
+PREFIX city: <http://www.disit.org/km4city/schema#>
+PREFIX dbpedia: <http://dbpedia.org/ontology/>
+select ?x where {
+    tmieaddress:` + param1 + ` rdf:type tmie:AddressRegion;
+    tmie:has ?x.
+    ?x city:shortDescription ?d.
+    FILTER ((EXISTS {?x rdf:type dbpedia:Activity} || EXISTS {?x rdf:type tmie:Attraction} || EXISTS {?x rdf:type city:Accommodation}) && CONTAINS(?d, "Covid Safety Charter"))
+}`
+      url = "http://localhost:7200/repositories/Activities?query=" + encodeURIComponent(query);
+      var xmlHttp = new XMLHttpRequest();
+      xmlHttp.onreadystatechange = function() { 
+          if (xmlHttp.readyState == 4 && xmlHttp.status == 200)
+              callback(xmlHttp.responseText);
+      }
+      xmlHttp.open("GET", url, false); // true for asynchronous 
+      xmlHttp.send(null);
+      console.log(xmlHttp.responseText);
+      output.innerHTML = xmlHttp.responseText.slice(3);
     }
   </script>
 </html>

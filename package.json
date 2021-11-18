@@ -1,6 +1,6 @@
 {
   "name": "sparql-ui",
-  "productName": "sparql-ui",
+  "productName": "ActivityDB",
   "version": "1.0.0",
   "description": "My Electron application description",
   "main": "src/index.js",
@@ -30,7 +30,8 @@
         {
           "name": "@electron-forge/maker-zip",
           "platforms": [
-            "darwin"
+            "darwin",
+            "win32"
           ]
         },
         {
